@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soundboard</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+        color: #333;
+        position: relative;
+    }
+    .main-container {
+        text-align: center;
+        background-color: #fff;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        width: 80%;
+        max-width: 600px;
+        z-index: 1;
+    }
+    h1 {
+        color: #555;
+        margin-bottom: 20px;
+    }
+    .button-group {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .main-button {
+        padding: 10px 20px;
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
+        background-color: #5cb85c;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .main-button:hover {
+        background-color: #4cae4c;
+    }
+    .sub-button-container {
+        margin-top: 20px;
+        justify-content: center;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .gong-button {
+        padding: 15px 30px;
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        background-color: #d9534f;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .gong-button:hover {
+        background-color: #c9302c;
+    }
+    .status-container {
+        margin-top: 20px;
+        font-size: 18px;
+        color: #666;
+    }
+    .status-container p {
+        margin: 5px 0;
+    }
+    /* Overlay-Stil */
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+        text-align: center;
+    }
+    .stop-button {
+        padding: 20px 40px;
+        font-size: 28px;
+        font-weight: bold;
+        color: white;
+        background-color: #337ab7;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .stop-button:hover {
+        background-color: #2e6da4;
+    }
+    #runningAudioInfo {
+        color: red;
+        font-size: 24px;
+        margin-top: 20px;
+        font-weight: bold;
+    }
+    /* Klassen für die Umschaltung der Anzeige */
+    .hidden {
+        display: none !important;
+    }
+</style>
+</head>
+<body>
+
+<div id="overlay" class="overlay">
+    <button id="stopButton" class="stop-button">
+        Stopp
+    </button>
+    <div id="runningAudioInfo"></div>
+</div>
+
+<div class="main-container">
+    <h1>Soundboard</h1>
+    
+    <div id="mainControls" class="button-group">
+        <button id="manualButton" class="main-button">Manuell</button>
+        <button id="openCloseButton" class="main-button">Öffnen/Schließen</button>
+    </div>
+
+    <div id="manualButtonsContainer" class="sub-button-container hidden">
+        <button id="beginButton" class="gong-button">Durchsage starten</button>
+        <button id="endButton" class="gong-button">Durchsage enden</button>
+    </div>
+
+    <div id="closeButtonContainer" class="sub-button-container hidden">
+        <button id="closeButton" class="gong-button">Schließen</button>
+    </div>
+
+    <div class="status-container">
+        <p>Aktuell läuft: <span id="currentAudio">Kein Audio</span></p>
+        <p>Ausgabegerät: <span id="outputDevice">...</span></p>
+    </div>
+</div>
+
+<audio id="closeSound" src="https://github.com/DittmarJ/soundsystem/raw/main/Design%20ohne%20Titel.mp4" preload="auto"></audio>
+<audio id="beginSound" src="https://github.com/DittmarJ/soundsystem/raw/main/Gong%20begin.mp4" preload="auto"></audio>
+<audio id="endSound" src="https://github.com/DittmarJ/soundsystem/raw/main/Gong%20ende.mp4" preload="auto"></audio>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const closeButton = document.getElementById('closeButton');
+        const manualButton = document.getElementById('manualButton');
+        const openCloseButton = document.getElementById('openCloseButton');
+        const closeButtonContainer = document.getElementById('closeButtonContainer');
+        const manualButtonsContainer = document.getElementById('manualButtonsContainer');
+        const beginButton = document.getElementById('beginButton');
+        const endButton = document.getElementById('endButton');
+
+        const closeSound = document.getElementById('closeSound');
+        const beginSound = document.getElementById('beginSound');
+        const endSound = document.getElementById('endSound');
+
+        const currentAudio = document.getElementById('currentAudio');
+        const outputDevice = document.getElementById('outputDevice');
+
+        const overlay = document.getElementById('overlay');
+        const stopButton = document.getElementById('stopButton');
+        const runningAudioInfo = document.getElementById('runningAudioInfo');
+        
+        const playSound = (audioElement, label) => {
+            closeSound.pause();
+            closeSound.currentTime = 0;
+            beginSound.pause();
+            beginSound.currentTime = 0;
+            endSound.pause();
+            endSound.currentTime = 0;
+
+            audioElement.play().catch(error => {
+                console.log(`Wiedergabe von ${label} konnte nicht gestartet werden.`);
+            });
+            currentAudio.textContent = `${label}`;
+            overlay.style.display = 'flex';
+            runningAudioInfo.textContent = `Es läuft: ${label}`;
+        };
+
+        const resetUI = () => {
+            overlay.style.display = 'none';
+            currentAudio.textContent = 'Kein Audio';
+            closeSound.pause();
+            closeSound.currentTime = 0;
+            beginSound.pause();
+            beginSound.currentTime = 0;
+            endSound.pause();
+            endSound.currentTime = 0;
+        };
+
+        closeButton.addEventListener('click', () => {
+            playSound(closeSound, 'Gong (Schließen)');
+        });
+
+        beginButton.addEventListener('click', () => {
+            playSound(beginSound, 'Durchsage starten');
+        });
+
+        endButton.addEventListener('click', () => {
+            playSound(endSound, 'Durchsage enden');
+        });
+
+        stopButton.addEventListener('click', () => {
+            const confirmed = confirm("Wirklich stoppen?");
+            if (confirmed) {
+                resetUI();
+            }
+        });
+
+        closeSound.addEventListener('ended', resetUI);
+        beginSound.addEventListener('ended', resetUI);
+        endSound.addEventListener('ended', resetUI);
+        
+        openCloseButton.addEventListener('click', () => {
+            closeButtonContainer.classList.remove('hidden');
+            manualButtonsContainer.classList.add('hidden');
+        });
+
+        manualButton.addEventListener('click', () => {
+            manualButtonsContainer.classList.remove('hidden');
+            closeButtonContainer.classList.add('hidden');
+        });
+        
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            navigator.mediaDevices.enumerateDevices()
+                .then(devices => {
+                    const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+                    if (audioOutputDevices.length > 0) {
+                        const defaultDevice = audioOutputDevices.find(device => device.deviceId === 'default');
+                        if (defaultDevice) {
+                            outputDevice.textContent = defaultDevice.label || 'Standardgerät';
+                        } else {
+                            outputDevice.textContent = audioOutputDevices[0].label || 'Gerät gefunden';
+                        }
+                    } else {
+                        outputDevice.textContent = 'Kein Gerät gefunden';
+                    }
+                })
+                .catch(err => {
+                    console.error('Fehler beim Abrufen der Geräte:', err);
+                    outputDevice.textContent = 'Fehler beim Abrufen der Geräte';
+                });
+        } else {
+            outputDevice.textContent = 'API nicht unterstützt';
+        }
+    });
+</script>
+
+</body>
+</html>
